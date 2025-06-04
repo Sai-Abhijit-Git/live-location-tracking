@@ -199,13 +199,11 @@
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>    <script>        let watchId = null;
-        let updateTimer = null;
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let watchId = null;
         let socket = null;
         let isSharing = false;
-        let lastPosition = null;
-        let locationErrorCount = 0;
-        let currentUpdateInterval = UPDATE_INTERVAL;
         
         const statusEl = document.getElementById('status');
         const startBtn = document.getElementById('startBtn');
@@ -216,9 +214,7 @@
         const lngEl = document.getElementById('lng');
         const accuracyEl = document.getElementById('accuracy');
         const timestampEl = document.getElementById('timestamp');
-        const trackUrlEl = document.getElementById('trackUrl');        // Update frequency in milliseconds (2 seconds for reliable tracking)
-        const UPDATE_INTERVAL = 2000;
-        const UPDATE_INTERVAL_SLOW = 5000; // Slower interval when GPS is struggling
+        const trackUrlEl = document.getElementById('trackUrl');
         
         // Initialize Socket.IO
         socket = io();
@@ -236,7 +232,9 @@
         trackUrlEl.textContent = window.location.origin + '/track';
         
         startBtn.addEventListener('click', startSharing);
-        stopBtn.addEventListener('click', stopSharing);        function startSharing() {
+        stopBtn.addEventListener('click', stopSharing);
+
+        function startSharing() {
             if (!navigator.geolocation) {
                 updateStatus('Geolocation is not supported by this browser', 'error');
                 return;
@@ -245,63 +243,43 @@
             updateStatus('Requesting location permission...', 'inactive');
             startBtn.disabled = true;
             
-            // Get initial location first
-            getCurrentLocationAndSend(() => {
-                // After successful initial location, start both approaches for maximum reliability
-                startWatchPosition();
-                startRegularUpdates();
-            });
-        }
-          // Add watchPosition for more responsive updates
-        function startWatchPosition() {
+            // Simple and reliable approach: just use watchPosition
             const options = {
                 enableHighAccuracy: true,
-                timeout: 15000, // Increased timeout to 15 seconds
-                maximumAge: 5000  // Allow cached location up to 5 seconds old
+                timeout: 15000, // 15 second timeout
+                maximumAge: 5000  // Allow 5 second old locations
             };
             
             watchId = navigator.geolocation.watchPosition(
-                (position) => {
-                    console.log('watchPosition update:', position);
-                    onLocationSuccess(position);
-                },
-                (error) => {
-                    console.log('watchPosition error:', error);
-                    handleLocationError(error, 'watchPosition');
-                },
+                onLocationSuccess,
+                onLocationError,
                 options
             );
-        }function stopSharing() {
+        }
+
+        function stopSharing() {
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
                 console.log('Stopped watchPosition');
             }
             
-            if (updateTimer) {
-                clearInterval(updateTimer);
-                updateTimer = null;
-                console.log('Stopped location timer');
-            }
-            
             isSharing = false;
-            lastPosition = null;
             updateStatus('Location sharing stopped', 'inactive');
             startBtn.style.display = 'block';
             stopBtn.style.display = 'none';
             locationInfo.style.display = 'none';
             trackingUrl.style.display = 'none';
             startBtn.disabled = false;
-        }function onLocationSuccess(position) {
-            console.log('onLocationSuccess called:', position);
+        }
+
+        function onLocationSuccess(position) {
+            console.log('Location update received:', position);
             const { latitude, longitude, accuracy } = position.coords;
             
-            // Store the position for timer updates
-            lastPosition = position;
-              if (!isSharing) {
+            if (!isSharing) {
                 isSharing = true;
-                console.log('Setting isSharing to true');
-                updateStatus('🟢 Sharing location in real-time (every 2s)', 'active');
+                updateStatus('🟢 Sharing location in real-time', 'active');
                 startBtn.style.display = 'none';
                 stopBtn.style.display = 'block';
                 locationInfo.style.display = 'block';
@@ -309,88 +287,10 @@
             }
             
             sendLocationUpdate(latitude, longitude, accuracy);
-        }        function getCurrentLocationAndSend(callback) {
-            const options = {
-                enableHighAccuracy: true,
-                timeout: 15000, // Increased timeout
-                maximumAge: 10000  // Allow cached location up to 10 seconds old
-            };
-            
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    console.log('Location obtained:', position);
-                    locationErrorCount = 0; // Reset error count on success
-                    currentUpdateInterval = UPDATE_INTERVAL; // Reset to normal interval
-                    onLocationSuccess(position);
-                    if (callback) callback();
-                },
-                (error) => {
-                    console.log('getCurrentPosition error:', error);
-                    handleLocationError(error, 'getCurrentPosition');
-                    if (callback) callback(); // Still call callback to continue
-                },
-                options
-            );
         }
 
-        function startRegularUpdates() {
-            console.log('Starting regular updates every', currentUpdateInterval, 'ms');
-            updateTimer = setInterval(() => {
-                if (isSharing) {
-                    if (lastPosition) {
-                        // Use last known position to keep sending updates
-                        const { latitude, longitude, accuracy } = lastPosition.coords;
-                        console.log('Using cached position:', { latitude, longitude, accuracy });
-                        sendLocationUpdate(latitude, longitude, accuracy);
-                    }
-                    
-                    // Try to get fresh location, but don't block on it
-                    console.log('Timer tick - attempting fresh location');
-                    getCurrentLocationAndSend();
-                }
-            }, currentUpdateInterval);
-        }
-        
-        function handleLocationError(error, source) {
-            locationErrorCount++;
-            console.log(`Location error from ${source}:`, error, 'Error count:', locationErrorCount);
-            
-            // Slow down updates if getting too many errors
-            if (locationErrorCount >= 3) {
-                currentUpdateInterval = UPDATE_INTERVAL_SLOW;
-                console.log('Switching to slower update interval:', currentUpdateInterval);
-                
-                // Restart timer with slower interval
-                if (updateTimer) {
-                    clearInterval(updateTimer);
-                    startRegularUpdates();
-                }
-            }
-            
-            // Don't stop sharing unless it's a permission error
-            if (error.code === error.PERMISSION_DENIED) {
-                console.log('Permission denied - stopping sharing');
-                stopSharing();
-                updateStatus('Location permission denied. Please refresh and allow location access.', 'error');
-            } else if (!lastPosition) {
-                // Only show error if we have no position at all
-                let message = '';
-                switch(error.code) {
-                    case error.POSITION_UNAVAILABLE:
-                        message = 'Location temporarily unavailable. Trying again...';
-                        break;
-                    case error.TIMEOUT:
-                        message = 'Location request taking longer than usual...';
-                        break;
-                    default:
-                        message = 'Having trouble getting location. Trying again...';
-                        break;
-                }
-                updateStatus(`⚠️ ${message}`, 'error');
-            }
-        }
-          function sendLocationUpdate(latitude, longitude, accuracy) {
-            console.log('sendLocationUpdate called:', { latitude, longitude, accuracy, timestamp: new Date().toLocaleTimeString() });
+        function sendLocationUpdate(latitude, longitude, accuracy) {
+            console.log('Sending location update:', { latitude, longitude, accuracy });
             
             // Update UI
             latEl.textContent = latitude.toFixed(6);
@@ -406,7 +306,6 @@
                 timestamp: new Date().toISOString()
             };
             
-            console.log('Emitting location via Socket.IO:', locationData);
             socket.emit('shareLocation', locationData);
             
             // Also send via REST API as backup
@@ -416,19 +315,34 @@
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(locationData)
-            }).then(response => {
-                console.log('REST API response status:', response.status);
-                return response.json();
-            }).then(data => {
-                console.log('REST API response:', data);
             }).catch(error => {
                 console.error('Error sending location via REST API:', error);
             });
         }
-          function onLocationError(error) {
-            // Use the new centralized error handler
-            handleLocationError(error, 'initial request');
+        
+        function onLocationError(error) {
+            console.log('Location error:', error);
             startBtn.disabled = false;
+            
+            let message = '';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message = 'Location permission denied. Please refresh and allow location access.';
+                    updateStatus(message, 'error');
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message = 'Location information unavailable. Please try again.';
+                    updateStatus(message, 'error');
+                    break;
+                case error.TIMEOUT:
+                    message = 'Location request timed out. Please try again.';
+                    updateStatus(message, 'error');
+                    break;
+                default:
+                    message = 'An unknown error occurred. Please try again.';
+                    updateStatus(message, 'error');
+                    break;
+            }
         }
         
         function updateStatus(message, type) {
@@ -436,7 +350,7 @@
             statusEl.className = `status ${type}`;
         }
         
-        // Handle page visibility change (pause/resume when tab is hidden/visible)
+        // Handle page visibility change
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && isSharing) {
                 console.log('Page hidden, location sharing continues in background');
