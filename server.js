@@ -41,6 +41,10 @@ app.get('/track', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'track.html'));
 });
 
+app.get('/test-track', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'test-track.html'));
+});
+
 // REST API endpoints
 app.post('/api/location', (req, res) => {
   const { latitude, longitude, accuracy } = req.body;

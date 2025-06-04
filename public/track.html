@@ -432,11 +432,11 @@
                 const currentLng = startLatLng.lng + (targetLatLng.lng - startLatLng.lng) * easeProgress;
                 
                 marker.setLatLng([currentLat, currentLng]);
-                
-                if (progress < 1) {
+                  if (progress < 1) {
                     requestAnimationFrame(animate);
                 }
-            }            
+            }
+            
             animate();
         }
         
