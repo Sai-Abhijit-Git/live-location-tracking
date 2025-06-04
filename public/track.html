@@ -216,20 +216,23 @@
             <p>Initializing map and waiting for location data...</p>
         </div>
         <div id="map" style="display: none;"></div>
-        
-        <div id="infoPanel" class="info-panel" style="display: none;">
+          <div id="infoPanel" class="info-panel" style="display: none;">
             <h3>📍 Current Location</h3>
             <div><strong>Latitude:</strong> <span id="currentLat">-</span></div>
             <div><strong>Longitude:</strong> <span id="currentLng">-</span></div>
             <div><strong>Accuracy:</strong> <span id="currentAccuracy">-</span>m</div>
             <div><strong>Last Update:</strong> <span id="lastUpdate">-</span></div>
+            <hr style="margin: 10px 0; border: none; border-top: 1px solid #eee;">
+            <div style="font-size: 0.8em; color: #888;">
+                <strong>⌨️ Shortcuts:</strong><br>
+                <span>C/R = Recenter • F = Follow</span>
+            </div>
         </div>
         
-        <div class="controls">
-            <button id="centerBtn" class="control-btn">
-                📍 Center on Location
+        <div class="controls">            <button id="centerBtn" class="control-btn" title="Recenter map to current location (Press C or R)">
+                📍 Recenter
             </button>
-            <button id="followBtn" class="control-btn">
+            <button id="followBtn" class="control-btn" title="Toggle follow mode (Press F)">
                 🎯 Follow Mode
             </button>
         </div>
@@ -404,10 +407,38 @@
                 lastUpdateEl.textContent = date.toLocaleTimeString();
             }
         }
-        
-        function centerOnLocation() {
+          function centerOnLocation() {
             if (currentLocation) {
-                map.setView([currentLocation.lat, currentLocation.lng], Math.max(map.getZoom(), 15));
+                // Add visual feedback
+                centerBtn.innerHTML = '📍 Centering...';
+                centerBtn.style.opacity = '0.7';
+                
+                // Smooth animation to location with optimal zoom
+                const targetZoom = Math.max(map.getZoom(), 16);
+                map.flyTo([currentLocation.lat, currentLocation.lng], targetZoom, {
+                    duration: 1.5, // Smooth 1.5 second animation
+                    easeLinearity: 0.25
+                });
+                
+                // Reset button after animation
+                setTimeout(() => {
+                    centerBtn.innerHTML = '📍 Recenter';
+                    centerBtn.style.opacity = '1';
+                }, 1500);
+                
+                // Briefly highlight the marker
+                if (locationMarker) {
+                    locationMarker.openPopup();
+                    setTimeout(() => {
+                        locationMarker.closePopup();
+                    }, 2000);
+                }
+            } else {
+                // No location available feedback
+                centerBtn.innerHTML = '❌ No Location';
+                setTimeout(() => {
+                    centerBtn.innerHTML = '📍 Recenter';
+                }, 1500);
             }
         }
         
@@ -430,11 +461,28 @@
             statusEl.textContent = message;
             statusEl.className = `status ${type}`;
         }
-        
-        // Handle window resize
+          // Handle window resize
         window.addEventListener('resize', () => {
             if (map) {
                 map.invalidateSize();
+            }
+        });
+        
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (event) => {
+            // Press 'C' or 'R' to recenter
+            if (event.key.toLowerCase() === 'c' || event.key.toLowerCase() === 'r') {
+                if (!event.ctrlKey && !event.altKey && !event.shiftKey) {
+                    event.preventDefault();
+                    centerOnLocation();
+                }
+            }
+            // Press 'F' to toggle follow mode
+            if (event.key.toLowerCase() === 'f') {
+                if (!event.ctrlKey && !event.altKey && !event.shiftKey) {
+                    event.preventDefault();
+                    toggleFollowMode();
+                }
             }
         });
         
