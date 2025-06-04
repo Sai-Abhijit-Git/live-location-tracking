@@ -327,24 +327,44 @@
                     showMap();
                 });
         }
-        
-        function updateLocation(locationData) {
+          function updateLocation(locationData) {
             const { latitude, longitude, accuracy, timestamp } = locationData;
             
             if (!latitude || !longitude) {
                 console.log('Invalid location data received');
                 return;
             }
-            
-            currentLocation = { lat: latitude, lng: longitude };
+
+            const newLocation = { lat: latitude, lng: longitude };
             
             // Show map if not already visible
             showMap();
             
-            // Update or create marker
+            // Update or create marker with smooth animation
             if (locationMarker) {
-                // Animate marker to new position
-                locationMarker.setLatLng([latitude, longitude]);
+                // Smooth animation to new position using Leaflet's flyTo equivalent for markers
+                const currentLatLng = locationMarker.getLatLng();
+                const newLatLng = L.latLng(latitude, longitude);
+                
+                // Calculate distance to determine if we should animate
+                const distance = currentLatLng.distanceTo(newLatLng);
+                
+                if (distance > 1) { // Only animate if moved more than 1 meter
+                    // Smooth marker movement with custom animation
+                    animateMarkerToPosition(locationMarker, newLatLng, 800); // 800ms animation
+                } else {
+                    // Small movement, just update position
+                    locationMarker.setLatLng(newLatLng);
+                }
+                
+                // Update popup content
+                locationMarker.getPopup().setContent(`
+                    <div style="text-align: center;">
+                        <strong>📍 Current Location</strong><br>
+                        <small>${latitude.toFixed(6)}, ${longitude.toFixed(6)}</small><br>
+                        <small style="color: #666;">Updated: ${new Date().toLocaleTimeString()}</small>
+                    </div>
+                `);
             } else {
                 // Create new marker
                 locationMarker = L.marker([latitude, longitude], {
@@ -359,7 +379,7 @@
                 `);
             }
             
-            // Update or create accuracy circle
+            // Update or create accuracy circle with smooth transition
             if (accuracyCircle) {
                 accuracyCircle.setLatLng([latitude, longitude]);
                 accuracyCircle.setRadius(accuracy);
@@ -373,15 +393,51 @@
                 }).addTo(map);
             }
             
-            // Center map on location if in follow mode or first update
-            if (followMode || !map.hasLayer(locationMarker)) {
+            // Store current location
+            currentLocation = newLocation;
+            
+            // Smooth map follow if in follow mode
+            if (followMode) {
+                map.panTo([latitude, longitude], {
+                    animate: true,
+                    duration: 0.5, // 500ms smooth pan
+                    easeLinearity: 0.1
+                });
+            } else if (!map.hasLayer(locationMarker)) {
+                // First update - center map
                 map.setView([latitude, longitude], Math.max(map.getZoom(), 15));
             }
             
             // Update info panel
             updateInfoPanel(locationData);
-              // Update status
-            updateStatus('🟢 Receiving live updates (every 3s)', 'active');
+            
+            // Update status
+            updateStatus('🟢 Live tracking active (updates every 1s)', 'active');
+        }
+        
+        // Custom function for smooth marker animation
+        function animateMarkerToPosition(marker, targetLatLng, duration = 1000) {
+            const startLatLng = marker.getLatLng();
+            const startTime = Date.now();
+            
+            function animate() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Easing function for smooth animation (ease-out)
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                
+                // Interpolate between start and target positions
+                const currentLat = startLatLng.lat + (targetLatLng.lat - startLatLng.lat) * easeProgress;
+                const currentLng = startLatLng.lng + (targetLatLng.lng - startLatLng.lng) * easeProgress;
+                
+                marker.setLatLng([currentLat, currentLng]);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            }            
+            animate();
         }
         
         function showMap() {

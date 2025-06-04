@@ -199,7 +199,8 @@
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>    <script>        let updateTimer = null;
+    <script src="/socket.io/socket.io.js"></script>    <script>        let watchId = null;
+        let updateTimer = null;
         let socket = null;
         let isSharing = false;
         let lastPosition = null;
@@ -214,9 +215,8 @@
         const accuracyEl = document.getElementById('accuracy');
         const timestampEl = document.getElementById('timestamp');
         const trackUrlEl = document.getElementById('trackUrl');
-        
-        // Update frequency in milliseconds (3 seconds for frequent updates)
-        const UPDATE_INTERVAL = 3000;
+          // Update frequency in milliseconds (1 second for smooth real-time tracking)
+        const UPDATE_INTERVAL = 1000;
         
         // Initialize Socket.IO
         socket = io();
@@ -245,10 +245,38 @@
             
             // Get initial location first
             getCurrentLocationAndSend(() => {
-                // After successful initial location, start the timer
+                // After successful initial location, start both approaches for maximum reliability
+                startWatchPosition();
                 startRegularUpdates();
             });
+        }
+        
+        // Add watchPosition for more responsive updates
+        function startWatchPosition() {
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 1000  // Allow cached location up to 1 second old
+            };
+            
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    console.log('watchPosition update:', position);
+                    onLocationSuccess(position);
+                },
+                (error) => {
+                    console.log('watchPosition error:', error);
+                    // Don't stop sharing on watchPosition errors, timer will continue
+                },
+                options
+            );
         }        function stopSharing() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+                console.log('Stopped watchPosition');
+            }
+            
             if (updateTimer) {
                 clearInterval(updateTimer);
                 updateTimer = null;
@@ -269,11 +297,10 @@
             
             // Store the position for timer updates
             lastPosition = position;
-            
-            if (!isSharing) {
+              if (!isSharing) {
                 isSharing = true;
                 console.log('Setting isSharing to true');
-                updateStatus('🟢 Sharing location in real-time (every 3s)', 'active');
+                updateStatus('🟢 Sharing location in real-time (every 1s)', 'active');
                 startBtn.style.display = 'none';
                 stopBtn.style.display = 'block';
                 locationInfo.style.display = 'block';
