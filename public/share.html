@@ -199,11 +199,12 @@
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
+    <script src="/socket.io/socket.io.js"></script>    <script>
         let watchId = null;
+        let updateTimer = null;
         let socket = null;
         let isSharing = false;
+        let lastPosition = null;
         
         const statusEl = document.getElementById('status');
         const startBtn = document.getElementById('startBtn');
@@ -215,6 +216,9 @@
         const accuracyEl = document.getElementById('accuracy');
         const timestampEl = document.getElementById('timestamp');
         const trackUrlEl = document.getElementById('trackUrl');
+        
+        // Update frequency in milliseconds (3 seconds for frequent updates)
+        const UPDATE_INTERVAL = 3000;
         
         // Initialize Socket.IO
         socket = io();
@@ -233,8 +237,7 @@
         
         startBtn.addEventListener('click', startSharing);
         stopBtn.addEventListener('click', stopSharing);
-        
-        function startSharing() {
+          function startSharing() {
             if (!navigator.geolocation) {
                 updateStatus('Geolocation is not supported by this browser', 'error');
                 return;
@@ -245,24 +248,33 @@
             
             const options = {
                 enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 1000
+                timeout: 5000,
+                maximumAge: 0  // Always get fresh location
             };
             
+            // Start watching position for immediate updates
             watchId = navigator.geolocation.watchPosition(
                 onLocationSuccess,
                 onLocationError,
                 options
             );
+            
+            // Also start timer-based updates for consistent frequency
+            startRegularUpdates();
         }
-        
-        function stopSharing() {
+          function stopSharing() {
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
             }
             
+            if (updateTimer) {
+                clearInterval(updateTimer);
+                updateTimer = null;
+            }
+            
             isSharing = false;
+            lastPosition = null;
             updateStatus('Location sharing stopped', 'inactive');
             startBtn.style.display = 'block';
             stopBtn.style.display = 'none';
@@ -270,19 +282,48 @@
             trackingUrl.style.display = 'none';
             startBtn.disabled = false;
         }
-        
-        function onLocationSuccess(position) {
+          function onLocationSuccess(position) {
             const { latitude, longitude, accuracy } = position.coords;
+            
+            // Store the position for timer updates
+            lastPosition = position;
             
             if (!isSharing) {
                 isSharing = true;
-                updateStatus('🟢 Sharing location in real-time', 'active');
+                updateStatus('🟢 Sharing location in real-time (every 3s)', 'active');
                 startBtn.style.display = 'none';
                 stopBtn.style.display = 'block';
                 locationInfo.style.display = 'block';
                 trackingUrl.style.display = 'block';
             }
-            
+              sendLocationUpdate(latitude, longitude, accuracy);
+        }
+        
+        function startRegularUpdates() {
+            updateTimer = setInterval(() => {
+                if (isSharing && lastPosition) {
+                    const { latitude, longitude, accuracy } = lastPosition.coords;
+                    sendLocationUpdate(latitude, longitude, accuracy);
+                } else if (isSharing) {
+                    // Try to get fresh location if we don't have one
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            lastPosition = position;
+                            const { latitude, longitude, accuracy } = position.coords;
+                            sendLocationUpdate(latitude, longitude, accuracy);
+                        },
+                        (error) => console.log('Timer location update failed:', error),
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 5000,
+                            maximumAge: 0
+                        }
+                    );
+                }
+            }, UPDATE_INTERVAL);
+        }
+        
+        function sendLocationUpdate(latitude, longitude, accuracy) {
             // Update UI
             latEl.textContent = latitude.toFixed(6);
             lngEl.textContent = longitude.toFixed(6);
@@ -307,8 +348,7 @@
                 },
                 body: JSON.stringify(locationData)
             }).catch(error => {
-                console.error('Error sending location:', error);
-            });
+                console.error('Error sending location:', error);            });
         }
         
         function onLocationError(error) {
