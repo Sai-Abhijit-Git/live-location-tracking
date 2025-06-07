@@ -41,8 +41,8 @@ app.get('/track', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'track.html'));
 });
 
-app.get('/test-track', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'test-track.html'));
+app.get('/map-test', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'map-test.html'));
 });
 
 // REST API endpoints
