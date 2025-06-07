@@ -142,10 +142,175 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
-        
-        .control-btn.active {
+          .control-btn.active {
             background: #667eea;
             color: white;
+        }
+        
+        /* Modern Map Style Controls */
+        .style-control {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            margin: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .style-switcher {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 120px;
+        }
+
+        .style-btn {
+            padding: 10px 12px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #495057;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: left;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .style-btn:hover {
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .style-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* Enhanced Leaflet Controls */
+        .leaflet-control-container .leaflet-control-zoom {
+            border: none;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+        }
+
+        .leaflet-control-zoom a {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: none;
+            color: #333;
+            font-weight: bold;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            transition: all 0.3s ease;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        /* Modern Popup Styles */
+        .leaflet-popup-content-wrapper {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            border-radius: 16px;
+            box-shadow: 0 12px 48px rgba(0,0,0,0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .leaflet-popup-tip {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+        }        .leaflet-popup-content {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #333;
+        }
+
+        /* Custom Location Marker Styles */
+        .custom-location-marker {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        .marker-pulse {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .marker-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            z-index: 10;
+        }
+
+        .marker-inner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 6px;
+            height: 6px;
+            background: white;
+            border-radius: 50%;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* Mobile optimizations for style controls */
+        @media (max-width: 768px) {
+            .style-control {
+                margin: 5px;
+                padding: 8px;
+            }
+            
+            .style-switcher {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 5px;
+                min-width: auto;
+            }
+            
+            .style-btn {
+                padding: 8px 10px;
+                font-size: 11px;
+                min-width: 70px;
+            }
         }
         
         @media (max-width: 768px) {
@@ -292,21 +457,102 @@
             centerBtn.addEventListener('click', centerOnLocation);
             followBtn.addEventListener('click', toggleFollowMode);
         }
-        
+          // Modern Map Styles
+        const mapStyles = {
+            modern: {
+                url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                name: '🌍 Modern'
+            },
+            satellite: {
+                url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                attribution: '&copy; Esri &mdash; Source: Esri, Maxar, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community',
+                name: '🛰️ Satellite'
+            },
+            dark: {
+                url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                name: '🌙 Dark Mode'
+            },
+            light: {
+                url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                name: '☀️ Light'
+            }
+        };
+
+        let currentTileLayer;
+        let currentStyle = 'modern';
+
         function initializeMap() {
-            // Default location (London)
-            const defaultLat = 51.505;
-            const defaultLng = -0.09;
+            // Default location (New York)
+            const defaultLat = 40.7128;
+            const defaultLng = -74.0060;
             
-            map = L.map('map').setView([defaultLat, defaultLng], 13);
-            
-            // Add OpenStreetMap tiles
-            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap contributors'
+            map = L.map('map', {
+                center: [defaultLat, defaultLng],
+                zoom: 13,
+                zoomControl: false
+            });
+
+            // Add custom zoom control in bottom right
+            L.control.zoom({
+                position: 'bottomright'
             }).addTo(map);
+
+            // Initialize with modern style
+            switchMapStyle('modern');
+
+            // Add map style switcher
+            addStyleSwitcher();
             
-            console.log('Map initialized');
+            console.log('Modern map initialized with multiple styles');
+        }
+
+        function switchMapStyle(styleName) {
+            const style = mapStyles[styleName];
+            
+            if (currentTileLayer) {
+                map.removeLayer(currentTileLayer);
+            }
+
+            currentTileLayer = L.tileLayer(style.url, {
+                attribution: style.attribution,
+                maxZoom: 19,
+                subdomains: 'abcd'
+            });
+
+            currentTileLayer.addTo(map);
+            currentStyle = styleName;
+
+            // Update active button
+            document.querySelectorAll('.style-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-style="${styleName}"]`)?.classList.add('active');
+        }
+
+        function addStyleSwitcher() {
+            const styleControl = L.control({position: 'topleft'});
+            
+            styleControl.onAdd = function(map) {
+                const div = L.DomUtil.create('div', 'style-control');
+                div.innerHTML = `
+                    <div class="style-switcher">
+                        ${Object.keys(mapStyles).map(key => 
+                            `<button onclick="switchMapStyle('${key}')" class="style-btn ${key === 'modern' ? 'active' : ''}" data-style="${key}">
+                                ${mapStyles[key].name}
+                            </button>`
+                        ).join('')}
+                    </div>
+                `;
+                
+                // Prevent map events on control
+                L.DomEvent.disableClickPropagation(div);
+                return div;
+            };
+            
+            styleControl.addTo(map);
         }
         
         function fetchInitialLocation() {
@@ -356,25 +602,49 @@
                     // Small movement, just update position
                     locationMarker.setLatLng(newLatLng);
                 }
-                
-                // Update popup content
+                  // Update popup content
                 locationMarker.getPopup().setContent(`
-                    <div style="text-align: center;">
-                        <strong>📍 Current Location</strong><br>
-                        <small>${latitude.toFixed(6)}, ${longitude.toFixed(6)}</small><br>
-                        <small style="color: #666;">Updated: ${new Date().toLocaleTimeString()}</small>
+                    <div style="text-align: center; padding: 8px;">
+                        <div style="font-size: 16px; font-weight: bold; color: #667eea; margin-bottom: 8px;">
+                            📍 Live Location
+                        </div>
+                        <div style="font-size: 12px; color: #666; line-height: 1.4;">
+                            <strong>Coordinates:</strong><br>
+                            ${latitude.toFixed(6)}, ${longitude.toFixed(6)}<br>
+                            <strong>Accuracy:</strong> ${accuracy ? Math.round(accuracy) + 'm' : 'Unknown'}<br>
+                            <strong>Updated:</strong> ${new Date(timestamp).toLocaleTimeString()}
+                        </div>
                     </div>
-                `);
-            } else {
-                // Create new marker
+                `);} else {
+                // Create new custom marker
+                const customIcon = L.divIcon({
+                    className: 'custom-location-marker',
+                    html: `
+                        <div class="marker-pulse"></div>
+                        <div class="marker-dot">
+                            <div class="marker-inner"></div>
+                        </div>
+                    `,
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                });
+
                 locationMarker = L.marker([latitude, longitude], {
-                    title: 'Current Location'
+                    icon: customIcon,
+                    title: 'Live Location'
                 }).addTo(map);
                 
                 locationMarker.bindPopup(`
-                    <div style="text-align: center;">
-                        <strong>📍 Current Location</strong><br>
-                        <small>${latitude.toFixed(6)}, ${longitude.toFixed(6)}</small>
+                    <div style="text-align: center; padding: 8px;">
+                        <div style="font-size: 16px; font-weight: bold; color: #667eea; margin-bottom: 8px;">
+                            📍 Live Location
+                        </div>
+                        <div style="font-size: 12px; color: #666; line-height: 1.4;">
+                            <strong>Coordinates:</strong><br>
+                            ${latitude.toFixed(6)}, ${longitude.toFixed(6)}<br>
+                            <strong>Accuracy:</strong> ${accuracy ? Math.round(accuracy) + 'm' : 'Unknown'}<br>
+                            <strong>Updated:</strong> ${new Date(timestamp).toLocaleTimeString()}
+                        </div>
                     </div>
                 `);
             }
