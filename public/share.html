@@ -96,6 +96,16 @@
             color: white;
         }
         
+        .button.secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .button.secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
         .button:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
@@ -141,6 +151,15 @@
             text-decoration: underline;
         }
         
+        .install-prompt {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
         @media (max-width: 480px) {
             .header {
                 padding: 20px;
@@ -170,13 +189,45 @@
             <div id="status" class="status inactive">
                 Location sharing is inactive
             </div>
-            
+              <div id="installPrompt" class="install-prompt" style="display: none;">
+                <div style="margin-bottom: 10px;">
+                    <strong>🚀 Install as App for Better Background Tracking!</strong>
+                </div>
+                <div style="font-size: 0.9em; margin-bottom: 15px;">
+                    Installing as a PWA improves background tracking reliability and allows the app to run more efficiently.
+                </div>
+                <button id="installBtn" class="button" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);">
+                    📱 Install App
+                </button>
+            </div>
+
+            <div id="backgroundStatus" class="info" style="display: none;">
+                <strong>📊 Background Tracking Status:</strong>
+                <div id="backgroundCapabilities" style="margin-top: 10px; font-size: 0.9em;"></div>
+                <div id="backgroundTips" style="margin-top: 10px; font-size: 0.9em;"></div>
+            </div>
+
             <div class="info">
-                <strong>📋 Instructions:</strong><br>
+                <strong>📋 How to Use:</strong><br>
                 1. Click "Start Sharing" to begin<br>
                 2. Allow location access when prompted<br>
-                3. Keep this page open to continue sharing<br>
-                4. Share the tracking URL with others
+                3. <strong>Install as app</strong> when prompted (recommended)<br>
+                4. For best results:<br>
+                   • Keep browser/app open (minimize, don't close)<br>
+                   • Enable notifications for background alerts<br>
+                   • On mobile: Add to home screen<br>
+                5. Share the tracking URL with others
+            </div>
+
+            <div id="platformTips" class="info" style="background: #fff3cd; border-left-color: #ffc107; display: none;">
+                <strong>⚠️ Platform-Specific Tips:</strong>
+                <div id="platformAdvice" style="margin-top: 10px; font-size: 0.9em;"></div>
+            </div>
+            
+            <div id="installPrompt" class="install-prompt" style="display: none;">
+                <strong>🚀 Install as App for Better Tracking!</strong><br>
+                Installing as an app provides better background location sharing.<br>
+                <button id="installBtn" class="button secondary">Install App</button>
             </div>
             
             <button id="startBtn" class="button primary">
@@ -203,11 +254,27 @@
             </div>
         </div>
     </div>    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        let watchId = null;
+    <script>        let watchId = null;
         let socket = null;
         let isSharing = false;
         let serviceWorkerRegistration = null;
+        let backgroundTimer = null;
+        let backgroundCapabilityTimer = null;
+        let lastLocationTime = null;
+        let wakeLock = null;
+        let heartbeatInterval = null;
+
+        // Enhanced background tracking state
+        const backgroundTracker = {
+            isBackgroundCapable: false,
+            isPWAInstalled: false,
+            hasNotificationPermission: false,
+            hasWakeLockSupport: false,
+            platform: 'unknown',
+            browserEngine: 'unknown',
+            lastActiveTime: Date.now(),
+            backgroundScore: 0
+        };
         
         const statusEl = document.getElementById('status');
         const startBtn = document.getElementById('startBtn');
@@ -219,8 +286,7 @@
         const accuracyEl = document.getElementById('accuracy');
         const timestampEl = document.getElementById('timestamp');
         const trackUrlEl = document.getElementById('trackUrl');
-        
-        // Register Service Worker on page load
+          // Register Service Worker on page load
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', async () => {
                 try {
@@ -232,12 +298,16 @@
                         console.log('Message from Service Worker:', event.data);
                         if (event.data.type === 'LOCATION_SENT') {
                             console.log('Location sent in background');
+                        } else if (event.data.type === 'BACKGROUND_STATUS') {
+                            console.log('Background status update:', event.data.data);
                         }
                     });
-                      // Request notification permission
+                    
+                    // Request notification permission
                     if ('Notification' in window && Notification.permission === 'default') {
                         const permission = await Notification.requestPermission();
                         console.log('Notification permission:', permission);
+                        backgroundTracker.hasNotificationPermission = (permission === 'granted');
                     }
                     
                     // Initialize server URL in Service Worker
@@ -247,6 +317,12 @@
                             data: { url: window.location.origin }
                         });
                     }
+                    
+                    // Detect platform capabilities
+                    detectPlatformCapabilities();
+                    
+                    // Start heartbeat monitoring
+                    startHeartbeat();
                     
                 } catch (error) {
                     console.error('Service Worker registration failed:', error);
@@ -270,9 +346,7 @@
         trackUrlEl.textContent = window.location.origin + '/track';
         
         startBtn.addEventListener('click', startSharing);
-        stopBtn.addEventListener('click', stopSharing);
-
-        function startSharing() {
+        stopBtn.addEventListener('click', stopSharing);        async function startSharing() {
             if (!navigator.geolocation) {
                 updateStatus('Geolocation is not supported by this browser', 'error');
                 return;
@@ -281,12 +355,17 @@
             updateStatus('Requesting location permission...', 'inactive');
             startBtn.disabled = true;
             
-            // Simple and reliable approach: just use watchPosition
+            // Request wake lock to prevent screen sleep
+            await requestWakeLock();
+            
+            // Enhanced geolocation options based on platform capabilities
             const options = {
                 enableHighAccuracy: true,
-                timeout: 15000, // 15 second timeout
-                maximumAge: 5000  // Allow 5 second old locations
+                timeout: backgroundTracker.platform === 'ios' ? 10000 : 15000,
+                maximumAge: backgroundTracker.isPWAInstalled ? 3000 : 5000
             };
+            
+            console.log('Starting location tracking with options:', options);
             
             watchId = navigator.geolocation.watchPosition(
                 onLocationSuccess,
@@ -302,6 +381,15 @@
                 console.log('Stopped watchPosition');
             }
             
+            // Release wake lock
+            if (wakeLock) {
+                wakeLock.release();
+                wakeLock = null;
+            }
+            
+            // Stop heartbeat
+            stopHeartbeat();
+            
             isSharing = false;
             updateStatus('Location sharing stopped', 'inactive');
             startBtn.style.display = 'block';
@@ -309,39 +397,70 @@
             locationInfo.style.display = 'none';
             trackingUrl.style.display = 'none';
             startBtn.disabled = false;
-        }
-
-        function onLocationSuccess(position) {
+        }        function onLocationSuccess(position) {
             console.log('Location update received:', position);
-            const { latitude, longitude, accuracy } = position.coords;
+            const { latitude, longitude, accuracy, speed, heading } = position.coords;
+            const timestamp = position.timestamp;
+            
+            // Update last location time for monitoring
+            lastLocationTime = Date.now();
             
             if (!isSharing) {
                 isSharing = true;
-                updateStatus('🟢 Sharing location in real-time', 'active');
+                
+                // Show enhanced status based on accuracy
+                let statusMessage = '🟢 Sharing location in real-time';
+                if (accuracy <= 10) {
+                    statusMessage += ' (High accuracy)';
+                } else if (accuracy <= 50) {
+                    statusMessage += ' (Good accuracy)';
+                } else {
+                    statusMessage += ` (±${Math.round(accuracy)}m accuracy)`;
+                }
+                
+                updateStatus(statusMessage, 'active');
                 startBtn.style.display = 'none';
                 stopBtn.style.display = 'block';
                 locationInfo.style.display = 'block';
                 trackingUrl.style.display = 'block';
+                
+                // Show success notification
+                if (backgroundTracker.hasNotificationPermission) {
+                    new Notification('Location Sharing Started', {
+                        body: `Accuracy: ±${Math.round(accuracy)}m. Keep app open for continuous tracking.`,
+                        icon: '/manifest.json',
+                        tag: 'location-start'
+                    });
+                }
             }
             
-            sendLocationUpdate(latitude, longitude, accuracy);
-        }        function sendLocationUpdate(latitude, longitude, accuracy) {
-            console.log('Sending location update:', { latitude, longitude, accuracy });
+            sendLocationUpdate(latitude, longitude, accuracy, speed, heading, timestamp);
+        }        function sendLocationUpdate(latitude, longitude, accuracy, speed = null, heading = null, timestamp = null) {
+            console.log('Sending enhanced location update:', { 
+                latitude, longitude, accuracy, speed, heading, timestamp 
+            });
             
-            // Update UI
+            // Update UI with enhanced information
             latEl.textContent = latitude.toFixed(6);
             lngEl.textContent = longitude.toFixed(6);
             accuracyEl.textContent = Math.round(accuracy);
             timestampEl.textContent = new Date().toLocaleTimeString();
-            
-            // Send to server via Socket.IO (primary method)
+              // Create comprehensive location data
             const locationData = {
                 latitude,
                 longitude,
                 accuracy,
-                timestamp: new Date().toISOString()
+                speed: speed !== null ? Math.round(speed * 3.6) : null, // Convert m/s to km/h
+                heading: heading !== null ? Math.round(heading) : null,
+                timestamp: timestamp ? new Date(timestamp).toISOString() : new Date().toISOString(),
+                source: 'foreground',
+                platform: backgroundTracker.platform,
+                browserEngine: backgroundTracker.browserEngine,
+                isPWA: backgroundTracker.isPWAInstalled,
+                backgroundScore: backgroundTracker.backgroundScore
             };
             
+            // Send to server via Socket.IO (primary method)
             socket.emit('shareLocation', locationData);
             
             // Send to Service Worker for background processing and backup
@@ -396,36 +515,220 @@
                     break;
             }
         }
-        
-        function updateStatus(message, type) {
+          function updateStatus(message, type) {
             statusEl.textContent = message;
             statusEl.className = `status ${type}`;
         }
-          // Handle page visibility change and background operation
-        document.addEventListener('visibilitychange', () => {
+
+        // Enhanced platform detection and capability assessment
+        function detectPlatformCapabilities() {
+            const ua = navigator.userAgent;
+            const platform = navigator.platform;
+            
+            // Detect platform
+            if (/Android/i.test(ua)) {
+                backgroundTracker.platform = 'android';
+            } else if (/iPhone|iPad|iPod/i.test(ua)) {
+                backgroundTracker.platform = 'ios';
+            } else if (/Windows/i.test(ua)) {
+                backgroundTracker.platform = 'windows';
+            } else if (/Mac/i.test(ua)) {
+                backgroundTracker.platform = 'mac';
+            } else if (/Linux/i.test(ua)) {
+                backgroundTracker.platform = 'linux';
+            }
+            
+            // Detect browser engine
+            if (/Chrome/i.test(ua) && /Google/i.test(navigator.vendor)) {
+                backgroundTracker.browserEngine = 'chrome';
+            } else if (/Safari/i.test(ua) && /Apple/i.test(navigator.vendor)) {
+                backgroundTracker.browserEngine = 'safari';
+            } else if (/Firefox/i.test(ua)) {
+                backgroundTracker.browserEngine = 'firefox';
+            } else if (/Edg/i.test(ua)) {
+                backgroundTracker.browserEngine = 'edge';
+            }
+            
+            // Check PWA installation
+            backgroundTracker.isPWAInstalled = window.matchMedia('(display-mode: standalone)').matches;
+            
+            // Check notification permission
+            backgroundTracker.hasNotificationPermission = 'Notification' in window && Notification.permission === 'granted';
+            
+            // Check Wake Lock API support
+            backgroundTracker.hasWakeLockSupport = 'wakeLock' in navigator;
+            
+            // Calculate background capability score (0-100)
+            let score = 0;
+            if (backgroundTracker.isPWAInstalled) score += 40;
+            if (backgroundTracker.hasNotificationPermission) score += 20;
+            if (backgroundTracker.hasWakeLockSupport) score += 20;
+            if (['chrome', 'edge'].includes(backgroundTracker.browserEngine)) score += 15;
+            if (backgroundTracker.platform === 'android') score += 5;
+            
+            backgroundTracker.backgroundScore = score;
+            backgroundTracker.isBackgroundCapable = score >= 60;
+            
+            console.log('Platform capabilities detected:', backgroundTracker);
+            updateBackgroundStatus();
+        }
+
+        function updateBackgroundStatus() {
+            const statusDiv = document.getElementById('backgroundStatus');
+            const capabilitiesDiv = document.getElementById('backgroundCapabilities');
+            const tipsDiv = document.getElementById('backgroundTips');
+            const platformTipsDiv = document.getElementById('platformTips');
+            const platformAdviceDiv = document.getElementById('platformAdvice');
+            
+            statusDiv.style.display = 'block';
+            
+            // Show capabilities
+            let capabilityText = `Background Score: ${backgroundTracker.backgroundScore}/100<br>`;
+            capabilityText += `Platform: ${backgroundTracker.platform}, Browser: ${backgroundTracker.browserEngine}<br>`;
+            capabilityText += `PWA Installed: ${backgroundTracker.isPWAInstalled ? '✅' : '❌'}, `;
+            capabilityText += `Notifications: ${backgroundTracker.hasNotificationPermission ? '✅' : '❌'}, `;
+            capabilityText += `Wake Lock: ${backgroundTracker.hasWakeLockSupport ? '✅' : '❌'}`;
+            
+            capabilitiesDiv.innerHTML = capabilityText;
+            
+            // Show tips
+            let tipsText = '';
+            if (backgroundTracker.backgroundScore >= 80) {
+                tipsText = '🟢 Excellent background tracking capability!';
+            } else if (backgroundTracker.backgroundScore >= 60) {
+                tipsText = '🟡 Good background tracking. Consider installing as PWA for better results.';
+            } else {
+                tipsText = '🔴 Limited background tracking. Please install as PWA and enable notifications.';
+            }
+            
+            tipsDiv.innerHTML = tipsText;
+            
+            // Platform-specific advice
+            let platformAdvice = '';
+            if (backgroundTracker.platform === 'ios') {
+                platformAdvice = 'iOS: Add to Home Screen for best results. Background tracking stops when Safari is closed.';
+                platformTipsDiv.style.display = 'block';
+            } else if (backgroundTracker.platform === 'android') {
+                platformAdvice = 'Android: Install as PWA and disable battery optimization for this app in settings.';
+                platformTipsDiv.style.display = 'block';
+            } else if (backgroundTracker.platform === 'windows' || backgroundTracker.platform === 'mac') {
+                platformAdvice = 'Desktop: Keep browser minimized (not closed) for continuous tracking.';
+                platformTipsDiv.style.display = 'block';
+            }
+            
+            platformAdviceDiv.innerHTML = platformAdvice;
+        }
+
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator && !wakeLock) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake Lock acquired');
+                    
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock released');
+                        wakeLock = null;
+                    });
+                } catch (err) {
+                    console.error('Wake Lock request failed:', err);
+                }
+            }
+        }
+
+        function startHeartbeat() {
+            if (!heartbeatInterval) {
+                heartbeatInterval = setInterval(() => {
+                    backgroundTracker.lastActiveTime = Date.now();
+                    
+                    // Send heartbeat to Service Worker
+                    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({
+                            type: 'HEARTBEAT',
+                            data: { 
+                                timestamp: Date.now(),
+                                isSharing: isSharing,
+                                isVisible: !document.hidden
+                            }
+                        });
+                    }
+                }, 10000); // Every 10 seconds
+            }
+        }
+
+        function stopHeartbeat() {
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+            }
+        }
+
+        // Handle page visibility change and background operation
+          document.addEventListener('visibilitychange', () => {
             if (document.hidden && isSharing) {
-                console.log('Page hidden, enabling background location sharing');
+                console.log('Page hidden, enabling enhanced background location sharing');
+                
+                // Update background tracker state
+                backgroundTracker.lastActiveTime = Date.now();
                 
                 // Notify Service Worker that app is going to background
                 if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
                     navigator.serviceWorker.controller.postMessage({
                         type: 'START_BACKGROUND_SYNC',
-                        data: { isSharing: true }
+                        data: { 
+                            isSharing: true,
+                            capabilities: backgroundTracker,
+                            lastLocation: lastLocationTime
+                        }
                     });
                 }
                 
-                // Show notification to user about background operation
-                if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification('Location Sharing Active', {
-                        body: 'Your location is being shared in the background',
+                // Show enhanced notification based on capabilities
+                if (backgroundTracker.hasNotificationPermission) {
+                    const notificationBody = backgroundTracker.backgroundScore >= 60 
+                        ? 'Background tracking active. Keep app open for best results.'
+                        : 'Limited background tracking. Keep browser open (minimized) for continuous tracking.';
+                    
+                    new Notification('Location Sharing in Background', {
+                        body: notificationBody,
                         icon: '/manifest.json',
                         badge: '/manifest.json',
-                        tag: 'location-sharing'
+                        tag: 'location-background'
                     });
                 }
+                
+                // Start enhanced background monitoring
+                backgroundTimer = setInterval(() => {
+                    const timeSinceLastLocation = Date.now() - (lastLocationTime || Date.now());
+                    console.log(`Background check: ${timeSinceLastLocation}ms since last location`);
+                    
+                    // Alert if location hasn't updated recently
+                    if (timeSinceLastLocation > 60000) { // 1 minute
+                        console.warn('Location updates may have stopped in background');
+                        
+                        if (backgroundTracker.hasNotificationPermission) {
+                            new Notification('Location Tracking Alert', {
+                                body: 'Location updates may have stopped. Tap to return to app.',
+                                icon: '/manifest.json',
+                                tag: 'location-alert'
+                            });
+                        }
+                    }
+                    
+                    if (!document.hidden) {
+                        clearInterval(backgroundTimer);
+                    }
+                }, 30000); // Check every 30 seconds
+                
+                // Update UI status
+                updateStatus('🟡 Background location sharing (keep app open)', 'active');
                 
             } else if (!document.hidden && isSharing) {
                 console.log('Page visible, location sharing active in foreground');
+                
+                if (backgroundTimer) {
+                    clearInterval(backgroundTimer);
+                    backgroundTimer = null;
+                }
                 
                 // Notify Service Worker that app is back in foreground
                 if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -434,18 +737,37 @@
                         data: { isSharing: true }
                     });
                 }
+                
+                // Re-acquire wake lock if needed
+                if (backgroundTracker.hasWakeLockSupport && !wakeLock) {
+                    requestWakeLock();
+                }
+                
+                updateStatus('🟢 Location sharing active (foreground)', 'active');
             }
         });
-        
-        // Handle app installation prompt
+          // Handle app installation prompt
         let deferredPrompt;
+        const installPrompt = document.getElementById('installPrompt');
+        const installBtn = document.getElementById('installBtn');
+        
         window.addEventListener('beforeinstallprompt', (e) => {
             console.log('PWA install prompt available');
             e.preventDefault();
             deferredPrompt = e;
             
-            // Show custom install button or notification
-            showInstallPrompt();
+            // Show custom install prompt
+            installPrompt.style.display = 'block';
+        });
+        
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to install prompt: ${outcome}`);
+                deferredPrompt = null;
+                installPrompt.style.display = 'none';
+            }
         });
         
         function showInstallPrompt() {
@@ -456,6 +778,8 @@
         // Handle successful PWA installation
         window.addEventListener('appinstalled', (evt) => {
             console.log('PWA was installed');
+            installPrompt.style.display = 'none';
+            updateStatus('🎉 App installed! Better background tracking enabled.', 'active');
         });
     </script>
 </body>

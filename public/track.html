@@ -53,6 +53,22 @@
             border-radius: 20px;
             font-size: 0.9em;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7);
+            animation: blink 1.5s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
         
         .status.waiting {
@@ -194,8 +210,18 @@
     <div class="header">
         <h1>📍 Live Location Tracking</h1>
         <div class="header-info">
-            <div id="status" class="status waiting">Connecting...</div>
-            <a href="/" class="back-link">← Back to Home</a>
+            <div class="status" id="status">
+                <span class="status-dot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+            <div class="connection-info">
+                <span id="connectionStatus">Disconnected</span>
+                <span id="lastUpdate"></span>
+            </div>
+            <div class="tracking-info" id="trackingInfo" style="display: none;">
+                <span id="backgroundStatus">⚡ Real-time</span>
+                <span id="accuracyInfo"></span>
+            </div>
         </div>
     </div>
     
@@ -349,9 +375,8 @@
                     updateStatus('Error fetching location data', 'error');
                 });
         }
-        
-        function updateLocation(locationData) {
-            const { latitude, longitude, accuracy, timestamp } = locationData;
+          function updateLocation(locationData) {
+            const { latitude, longitude, accuracy, timestamp, source, platform, browserEngine, isPWA, backgroundScore, speed, heading } = locationData;
             
             if (!latitude || !longitude) {
                 console.error('Invalid location data:', locationData);
@@ -360,23 +385,41 @@
             
             currentLocation = { lat: latitude, lng: longitude, accuracy };
             
-            // Update location marker
+            // Update location marker with enhanced info
+            const popupContent = `
+                <b>Current Location</b><br>
+                Lat: ${latitude.toFixed(6)}<br>
+                Lng: ${longitude.toFixed(6)}<br>
+                Accuracy: ±${accuracy}m<br>
+                ${speed ? `Speed: ${speed} km/h<br>` : ''}
+                ${heading ? `Heading: ${heading}°<br>` : ''}
+                Source: ${source || 'unknown'}<br>
+                ${platform ? `Platform: ${platform}<br>` : ''}
+                ${backgroundScore ? `Background Score: ${backgroundScore}/100<br>` : ''}
+                Last Update: ${new Date(timestamp).toLocaleString()}
+            `;
+            
             if (locationMarker) {
                 locationMarker.setLatLng([latitude, longitude]);
+                locationMarker.setPopupContent(popupContent);
             } else {
                 locationMarker = L.marker([latitude, longitude])
                     .addTo(map)
-                    .bindPopup(`<b>Current Location</b><br>Lat: ${latitude.toFixed(6)}<br>Lng: ${longitude.toFixed(6)}<br>Accuracy: ${accuracy}m`);
+                    .bindPopup(popupContent);
             }
             
-            // Update accuracy circle
+            // Update accuracy circle with color based on accuracy
+            const circleColor = accuracy <= 10 ? 'green' : accuracy <= 50 ? 'blue' : 'orange';
+            const fillColor = accuracy <= 10 ? '#00ff00' : accuracy <= 50 ? '#3388ff' : '#ff8800';
+            
             if (accuracyCircle) {
                 accuracyCircle.setLatLng([latitude, longitude]);
                 accuracyCircle.setRadius(accuracy);
+                accuracyCircle.setStyle({ color: circleColor, fillColor: fillColor });
             } else {
                 accuracyCircle = L.circle([latitude, longitude], {
-                    color: 'blue',
-                    fillColor: '#3388ff',
+                    color: circleColor,
+                    fillColor: fillColor,
                     fillOpacity: 0.2,
                     radius: accuracy
                 }).addTo(map);
@@ -387,6 +430,9 @@
             currentLngEl.textContent = longitude.toFixed(6);
             currentAccuracyEl.textContent = accuracy;
             lastUpdateEl.textContent = new Date(timestamp).toLocaleTimeString();
+            
+            // Update enhanced status in header
+            updateTrackingStatus(locationData);
             
             // Center map if in follow mode
             if (followMode) {
@@ -411,11 +457,66 @@
             }
         }
         
-        function updateStatus(message, type) {
-            statusEl.textContent = message;
-            statusEl.className = `status ${type}`;
+        function updateTrackingStatus(locationData) {
+            const backgroundStatusEl = document.getElementById('backgroundStatus');
+            const accuracyInfoEl = document.getElementById('accuracyInfo');
+            const trackingInfoEl = document.getElementById('trackingInfo');
+            
+            if (!backgroundStatusEl || !accuracyInfoEl || !trackingInfoEl) return;
+            
+            trackingInfoEl.style.display = 'block';
+            
+            // Update background tracking status
+            const isBackground = locationData.source === 'background';
+            const backgroundScore = locationData.backgroundScore || 0;
+            
+            if (isBackground) {
+                backgroundStatusEl.textContent = '🔄 Background';
+                backgroundStatusEl.style.color = '#ff9800';
+            } else {
+                backgroundStatusEl.textContent = '⚡ Real-time';
+                backgroundStatusEl.style.color = '#4caf50';
+            }
+            
+            // Update accuracy info with visual indicator
+            const accuracy = locationData.accuracy || 0;
+            let accuracyText = `±${Math.round(accuracy)}m`;
+            let accuracyColor = '#4caf50'; // Green for good
+            
+            if (accuracy > 50) {
+                accuracyText += ' 🟡';
+                accuracyColor = '#ff9800'; // Orange for moderate
+            } else if (accuracy > 100) {
+                accuracyText += ' 🔴';
+                accuracyColor = '#f44336'; // Red for poor
+            } else {
+                accuracyText += ' 🟢';
+            }
+            
+            accuracyInfoEl.textContent = accuracyText;
+            accuracyInfoEl.style.color = accuracyColor;
+            
+            // Add platform info if available
+            if (locationData.platform && locationData.backgroundScore) {
+                const platformInfo = `${locationData.platform} (${backgroundScore}/100)`;
+                document.getElementById('lastUpdate').textContent = platformInfo;
+            }
         }
-        
+
+        // Enhanced status update function
+        function updateStatus(message, type) {
+            const statusEl = document.getElementById('statusText');
+            const statusDot = document.querySelector('.status-dot');
+            
+            if (statusEl) {
+                statusEl.textContent = message;
+            }
+            
+            if (statusDot) {
+                statusDot.className = `status-dot ${type}`;
+            }
+        }
+
         // Start the application
         initializeApp();
     </script>
