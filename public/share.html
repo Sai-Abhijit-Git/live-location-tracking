@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Share Location - Live Tracking</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Location Tracker">
     <style>
         * {
             margin: 0;
@@ -197,13 +202,12 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <script src="/socket.io/socket.io.js"></script>
+    </div>    <script src="/socket.io/socket.io.js"></script>
     <script>
         let watchId = null;
         let socket = null;
         let isSharing = false;
+        let serviceWorkerRegistration = null;
         
         const statusEl = document.getElementById('status');
         const startBtn = document.getElementById('startBtn');
@@ -215,6 +219,40 @@
         const accuracyEl = document.getElementById('accuracy');
         const timestampEl = document.getElementById('timestamp');
         const trackUrlEl = document.getElementById('trackUrl');
+        
+        // Register Service Worker on page load
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    serviceWorkerRegistration = await navigator.serviceWorker.register('/sw.js');
+                    console.log('Service Worker registered successfully:', serviceWorkerRegistration.scope);
+                    
+                    // Listen for messages from Service Worker
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        console.log('Message from Service Worker:', event.data);
+                        if (event.data.type === 'LOCATION_SENT') {
+                            console.log('Location sent in background');
+                        }
+                    });
+                      // Request notification permission
+                    if ('Notification' in window && Notification.permission === 'default') {
+                        const permission = await Notification.requestPermission();
+                        console.log('Notification permission:', permission);
+                    }
+                    
+                    // Initialize server URL in Service Worker
+                    if (navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({
+                            type: 'INIT_SERVER_URL',
+                            data: { url: window.location.origin }
+                        });
+                    }
+                    
+                } catch (error) {
+                    console.error('Service Worker registration failed:', error);
+                }
+            });
+        }
         
         // Initialize Socket.IO
         socket = io();
@@ -287,9 +325,7 @@
             }
             
             sendLocationUpdate(latitude, longitude, accuracy);
-        }
-
-        function sendLocationUpdate(latitude, longitude, accuracy) {
+        }        function sendLocationUpdate(latitude, longitude, accuracy) {
             console.log('Sending location update:', { latitude, longitude, accuracy });
             
             // Update UI
@@ -298,7 +334,7 @@
             accuracyEl.textContent = Math.round(accuracy);
             timestampEl.textContent = new Date().toLocaleTimeString();
             
-            // Send to server via Socket.IO
+            // Send to server via Socket.IO (primary method)
             const locationData = {
                 latitude,
                 longitude,
@@ -307,6 +343,14 @@
             };
             
             socket.emit('shareLocation', locationData);
+            
+            // Send to Service Worker for background processing and backup
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'LOCATION_UPDATE',
+                    data: locationData
+                });
+            }
             
             // Also send via REST API as backup
             fetch('/api/location', {
@@ -317,6 +361,14 @@
                 body: JSON.stringify(locationData)
             }).catch(error => {
                 console.error('Error sending location via REST API:', error);
+                
+                // If fetch fails, store in Service Worker for later retry
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'STORE_FAILED_LOCATION',
+                        data: locationData
+                    });
+                }
             });
         }
         
@@ -349,14 +401,61 @@
             statusEl.textContent = message;
             statusEl.className = `status ${type}`;
         }
-        
-        // Handle page visibility change
+          // Handle page visibility change and background operation
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && isSharing) {
-                console.log('Page hidden, location sharing continues in background');
+                console.log('Page hidden, enabling background location sharing');
+                
+                // Notify Service Worker that app is going to background
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'START_BACKGROUND_SYNC',
+                        data: { isSharing: true }
+                    });
+                }
+                
+                // Show notification to user about background operation
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('Location Sharing Active', {
+                        body: 'Your location is being shared in the background',
+                        icon: '/manifest.json',
+                        badge: '/manifest.json',
+                        tag: 'location-sharing'
+                    });
+                }
+                
             } else if (!document.hidden && isSharing) {
-                console.log('Page visible, location sharing active');
+                console.log('Page visible, location sharing active in foreground');
+                
+                // Notify Service Worker that app is back in foreground
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'STOP_BACKGROUND_SYNC',
+                        data: { isSharing: true }
+                    });
+                }
             }
+        });
+        
+        // Handle app installation prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('PWA install prompt available');
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show custom install button or notification
+            showInstallPrompt();
+        });
+        
+        function showInstallPrompt() {
+            // You can add a custom install button here
+            console.log('App can be installed as PWA');
+        }
+        
+        // Handle successful PWA installation
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('PWA was installed');
         });
     </script>
 </body>
