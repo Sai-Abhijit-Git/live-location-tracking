@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Track Location - Live Tracking</title>
-    
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+      <!-- Leaflet CSS - Latest Stable Version -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+          crossorigin="" />
     
     <style>
         * {
@@ -401,10 +402,10 @@
                 🎯 Follow Mode
             </button>
         </div>
-    </div>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    </div>    <!-- Leaflet JS - Latest Stable Version -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+            crossorigin=""></script>
     <script src="/socket.io/socket.io.js"></script>
     
     <script>
@@ -456,33 +457,30 @@
             // Set up controls
             centerBtn.addEventListener('click', centerOnLocation);
             followBtn.addEventListener('click', toggleFollowMode);
-        }
-          // Modern Map Styles
+        }        // Reliable Open Source Map Styles (Updated for 2025)
         const mapStyles = {
-            modern: {
-                url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                name: '🌍 Modern'
+            openstreetmap: {
+                url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                name: '🗺️ OpenStreetMap'
             },
-            satellite: {
-                url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                attribution: '&copy; Esri &mdash; Source: Esri, Maxar, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community',
-                name: '🛰️ Satellite'
+            humanitarian: {
+                url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a>',
+                name: '🌍 Humanitarian'
             },
-            dark: {
-                url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                name: '🌙 Dark Mode'
+            transport: {
+                url: 'https://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38',
+                attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                name: '🚗 Transport'
             },
-            light: {
-                url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                name: '☀️ Light'
+            topo: {
+                url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+                attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
+                name: '⛰️ Topographic'
             }
-        };
-
-        let currentTileLayer;
-        let currentStyle = 'modern';        function initializeMap() {
+        };        let currentTileLayer;
+        let currentStyle = 'openstreetmap';function initializeMap() {
             try {
                 // Default location (New York)
                 const defaultLat = 40.7128;
@@ -497,10 +495,8 @@
                 // Add custom zoom control in bottom right
                 L.control.zoom({
                     position: 'bottomright'
-                }).addTo(map);
-
-                // Initialize with modern style
-                switchMapStyle('modern');
+                }).addTo(map);                // Initialize with reliable OpenStreetMap
+                switchMapStyle('openstreetmap');
 
                 // Add map style switcher
                 addStyleSwitcher();
@@ -513,13 +509,15 @@
                 console.error('Error initializing map:', error);
                 updateStatus('Error loading map. Please refresh the page.', 'error');
             }
-        }function switchMapStyle(styleName) {
+        }        function switchMapStyle(styleName) {
             try {
                 const style = mapStyles[styleName];
                 
                 if (!style) {
                     console.error('Map style not found:', styleName);
-                    return;
+                    // Fallback to OpenStreetMap
+                    styleName = 'openstreetmap';
+                    style = mapStyles['openstreetmap'];
                 }
                 
                 if (currentTileLayer) {
@@ -529,7 +527,9 @@
                 currentTileLayer = L.tileLayer(style.url, {
                     attribution: style.attribution,
                     maxZoom: 19,
-                    subdomains: 'abcd'
+                    subdomains: 'abc',
+                    errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
+                    detectRetina: true
                 });
 
                 currentTileLayer.addTo(map);
@@ -545,18 +545,34 @@
                 }
                 
                 console.log('Switched to map style:', styleName);
+                
+                // Handle tile load errors
+                currentTileLayer.on('tileerror', function(error) {
+                    console.warn('Tile load error:', error);
+                    updateStatus('Some map tiles failed to load. Trying alternative source...', 'error');
+                });
+                
+                currentTileLayer.on('tileload', function() {
+                    updateStatus('🗺️ Map loaded successfully', 'active');
+                });
+                
             } catch (error) {
                 console.error('Error switching map style:', error);
+                updateStatus('Error loading map style. Using fallback...', 'error');
+                
+                // Ultimate fallback - basic OSM
+                if (styleName !== 'openstreetmap') {
+                    switchMapStyle('openstreetmap');
+                }
             }
         }function addStyleSwitcher() {
             const styleControl = L.control({position: 'topleft'});
             
             styleControl.onAdd = function(map) {
-                const div = L.DomUtil.create('div', 'style-control');
-                div.innerHTML = `
+                const div = L.DomUtil.create('div', 'style-control');                div.innerHTML = `
                     <div class="style-switcher">
                         ${Object.keys(mapStyles).map(key => 
-                            `<button class="style-btn ${key === 'modern' ? 'active' : ''}" data-style="${key}">
+                            `<button class="style-btn ${key === 'openstreetmap' ? 'active' : ''}" data-style="${key}">
                                 ${mapStyles[key].name}
                             </button>`
                         ).join('')}
