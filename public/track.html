@@ -482,57 +482,70 @@
         };
 
         let currentTileLayer;
-        let currentStyle = 'modern';
+        let currentStyle = 'modern';        function initializeMap() {
+            try {
+                // Default location (New York)
+                const defaultLat = 40.7128;
+                const defaultLng = -74.0060;
+                
+                map = L.map('map', {
+                    center: [defaultLat, defaultLng],
+                    zoom: 13,
+                    zoomControl: false
+                });
 
-        function initializeMap() {
-            // Default location (New York)
-            const defaultLat = 40.7128;
-            const defaultLng = -74.0060;
-            
-            map = L.map('map', {
-                center: [defaultLat, defaultLng],
-                zoom: 13,
-                zoomControl: false
-            });
+                // Add custom zoom control in bottom right
+                L.control.zoom({
+                    position: 'bottomright'
+                }).addTo(map);
 
-            // Add custom zoom control in bottom right
-            L.control.zoom({
-                position: 'bottomright'
-            }).addTo(map);
+                // Initialize with modern style
+                switchMapStyle('modern');
 
-            // Initialize with modern style
-            switchMapStyle('modern');
-
-            // Add map style switcher
-            addStyleSwitcher();
-            
-            console.log('Modern map initialized with multiple styles');
-        }
-
-        function switchMapStyle(styleName) {
-            const style = mapStyles[styleName];
-            
-            if (currentTileLayer) {
-                map.removeLayer(currentTileLayer);
+                // Add map style switcher
+                addStyleSwitcher();
+                
+                console.log('Modern map initialized with multiple styles');
+            } catch (error) {
+                console.error('Error initializing map:', error);
+                updateStatus('Error loading map. Please refresh the page.', 'error');
             }
+        }        function switchMapStyle(styleName) {
+            try {
+                const style = mapStyles[styleName];
+                
+                if (!style) {
+                    console.error('Map style not found:', styleName);
+                    return;
+                }
+                
+                if (currentTileLayer) {
+                    map.removeLayer(currentTileLayer);
+                }
 
-            currentTileLayer = L.tileLayer(style.url, {
-                attribution: style.attribution,
-                maxZoom: 19,
-                subdomains: 'abcd'
-            });
+                currentTileLayer = L.tileLayer(style.url, {
+                    attribution: style.attribution,
+                    maxZoom: 19,
+                    subdomains: 'abcd'
+                });
 
-            currentTileLayer.addTo(map);
-            currentStyle = styleName;
+                currentTileLayer.addTo(map);
+                currentStyle = styleName;
 
-            // Update active button
-            document.querySelectorAll('.style-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`[data-style="${styleName}"]`)?.classList.add('active');
-        }
-
-        function addStyleSwitcher() {
+                // Update active button
+                document.querySelectorAll('.style-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                const activeBtn = document.querySelector(`[data-style="${styleName}"]`);
+                if (activeBtn) {
+                    activeBtn.classList.add('active');
+                }
+                
+                console.log('Switched to map style:', styleName);
+            } catch (error) {
+                console.error('Error switching map style:', error);
+            }
+        }function addStyleSwitcher() {
             const styleControl = L.control({position: 'topleft'});
             
             styleControl.onAdd = function(map) {
@@ -540,12 +553,21 @@
                 div.innerHTML = `
                     <div class="style-switcher">
                         ${Object.keys(mapStyles).map(key => 
-                            `<button onclick="switchMapStyle('${key}')" class="style-btn ${key === 'modern' ? 'active' : ''}" data-style="${key}">
+                            `<button class="style-btn ${key === 'modern' ? 'active' : ''}" data-style="${key}">
                                 ${mapStyles[key].name}
                             </button>`
                         ).join('')}
                     </div>
                 `;
+                
+                // Add event listeners to buttons
+                div.querySelectorAll('.style-btn').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const style = this.getAttribute('data-style');
+                        switchMapStyle(style);
+                    });
+                });
                 
                 // Prevent map events on control
                 L.DomEvent.disableClickPropagation(div);
