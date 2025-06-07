@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Track Location - Live Tracking</title>
-      <!-- Leaflet CSS - Latest Stable Version -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
-          crossorigin="" />
-    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />    
     <style>
         * {
             margin: 0;
@@ -25,7 +22,7 @@
         }
         
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #007bff;
             color: white;
             padding: 15px 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -134,278 +131,78 @@
             cursor: pointer;
             font-weight: 600;
             transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
         
         .control-btn:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
-          .control-btn.active {
-            background: #667eea;
+        
+        .control-btn.active {
+            background: #007bff;
             color: white;
         }
         
-        /* Modern Map Style Controls */
-        .style-control {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-            margin: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .style-switcher {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            min-width: 120px;
-        }
-
-        .style-btn {
-            padding: 10px 12px;
-            border: none;
-            border-radius: 8px;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            color: #495057;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            text-align: left;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-        }
-
-        .style-btn:hover {
-            transform: translateY(-2px);
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        .style-btn.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-            transform: translateY(-1px);
-        }
-
-        /* Enhanced Leaflet Controls */
-        .leaflet-control-container .leaflet-control-zoom {
-            border: none;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-        }
-
-        .leaflet-control-zoom a {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: none;
-            color: #333;
-            font-weight: bold;
-            width: 40px;
-            height: 40px;
-            line-height: 40px;
-            transition: all 0.3s ease;
-        }
-
-        .leaflet-control-zoom a:hover {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            transform: scale(1.05);
-        }
-
-        /* Modern Popup Styles */
-        .leaflet-popup-content-wrapper {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(15px);
-            border-radius: 16px;
-            box-shadow: 0 12px 48px rgba(0,0,0,0.15);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .leaflet-popup-tip {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(15px);
-        }        .leaflet-popup-content {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: #333;
-        }
-
-        /* Custom Location Marker Styles */
-        .custom-location-marker {
-            background: transparent !important;
-            border: none !important;
-        }
-
-        .marker-pulse {
+        .loading {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 40px;
-            height: 40px;
-            background: rgba(102, 126, 234, 0.3);
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        .marker-dot {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 16px;
-            height: 16px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: 3px solid white;
-            border-radius: 50%;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-            z-index: 10;
-        }
-
-        .marker-inner {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 6px;
-            height: 6px;
-            background: white;
-            border-radius: 50%;
-        }
-
-        @keyframes pulse {
-            0% {
-                transform: translate(-50%, -50%) scale(0.5);
-                opacity: 1;
-            }
-            100% {
-                transform: translate(-50%, -50%) scale(1.5);
-                opacity: 0;
-            }
-        }
-
-        /* Mobile optimizations for style controls */
-        @media (max-width: 768px) {
-            .style-control {
-                margin: 5px;
-                padding: 8px;
-            }
-            
-            .style-switcher {
-                flex-direction: row;
-                flex-wrap: wrap;
-                gap: 5px;
-                min-width: auto;
-            }
-            
-            .style-btn {
-                padding: 8px 10px;
-                font-size: 11px;
-                min-width: 70px;
-            }
+            text-align: center;
+            color: #666;
         }
         
         @media (max-width: 768px) {
-            .header {
-                padding: 10px 15px;
-            }
-            
-            .header h1 {
-                font-size: 1.3em;
+            .header-info {
+                flex-direction: column;
+                align-items: stretch;
             }
             
             .info-panel {
-                position: static;
+                position: relative;
                 margin: 10px;
                 max-width: none;
             }
             
             .controls {
-                position: static;
+                position: relative;
                 margin: 10px;
                 justify-content: center;
             }
-            
-            .map-container {
-                order: 2;
-            }
-        }
-        
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            flex-direction: column;
-            color: #666;
-        }
-        
-        .loading .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
     <div class="header">
+        <h1>📍 Live Location Tracking</h1>
         <div class="header-info">
-            <div>
-                <h1>🗺️ Live Location Tracking</h1>
-                <div id="status" class="status waiting">Waiting for location data...</div>
-            </div>
-            <a href="/" class="back-link">← Home</a>
+            <div id="status" class="status waiting">Connecting...</div>
+            <a href="/" class="back-link">← Back to Home</a>
         </div>
     </div>
     
     <div class="map-container">
+        <div id="map"></div>
         <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p>Initializing map and waiting for location data...</p>
+            <h3>Loading map...</h3>
+            <p>Waiting for location data...</p>
         </div>
-        <div id="map" style="display: none;"></div>
-          <div id="infoPanel" class="info-panel" style="display: none;">
+        
+        <div class="info-panel">
             <h3>📍 Current Location</h3>
             <div><strong>Latitude:</strong> <span id="currentLat">-</span></div>
             <div><strong>Longitude:</strong> <span id="currentLng">-</span></div>
             <div><strong>Accuracy:</strong> <span id="currentAccuracy">-</span>m</div>
             <div><strong>Last Update:</strong> <span id="lastUpdate">-</span></div>
-            <hr style="margin: 10px 0; border: none; border-top: 1px solid #eee;">
-            <div style="font-size: 0.8em; color: #888;">
-                <strong>⌨️ Shortcuts:</strong><br>
-                <span>C/R = Recenter • F = Follow</span>
-            </div>
         </div>
         
-        <div class="controls">            <button id="centerBtn" class="control-btn" title="Recenter map to current location (Press C or R)">
-                📍 Recenter
-            </button>
-            <button id="followBtn" class="control-btn" title="Toggle follow mode (Press F)">
-                🎯 Follow Mode
-            </button>
+        <div class="controls">
+            <button id="centerBtn" class="control-btn">📍 Center</button>
+            <button id="followBtn" class="control-btn">🎯 Follow</button>
         </div>
-    </div>    <!-- Leaflet JS - Latest Stable Version -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
-            crossorigin=""></script>
+    </div>    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     
     <script>
@@ -419,7 +216,6 @@
         const statusEl = document.getElementById('status');
         const loadingEl = document.getElementById('loading');
         const mapEl = document.getElementById('map');
-        const infoPanelEl = document.getElementById('infoPanel');
         const centerBtn = document.getElementById('centerBtn');
         const followBtn = document.getElementById('followBtn');
         
@@ -430,20 +226,21 @@
         const lastUpdateEl = document.getElementById('lastUpdate');
         
         // Initialize the application
-        initializeApp();
-        
         function initializeApp() {
+            console.log('Initializing app...');
+            
             // Initialize Socket.IO
             socket = io();
             
             socket.on('connect', () => {
                 console.log('Connected to server');
+                updateStatus('Connected. Waiting for location...', 'waiting');
                 fetchInitialLocation();
             });
             
             socket.on('disconnect', () => {
                 console.log('Disconnected from server');
-                updateStatus('Connection lost. Attempting to reconnect...', 'error');
+                updateStatus('Connection lost. Trying to reconnect...', 'error');
             });
             
             socket.on('locationUpdate', (locationData) => {
@@ -457,31 +254,12 @@
             // Set up controls
             centerBtn.addEventListener('click', centerOnLocation);
             followBtn.addEventListener('click', toggleFollowMode);
-        }        // Reliable Open Source Map Styles (Updated for 2025)
-        const mapStyles = {
-            openstreetmap: {
-                url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                name: '🗺️ OpenStreetMap'
-            },
-            humanitarian: {
-                url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a>',
-                name: '🌍 Humanitarian'
-            },
-            transport: {
-                url: 'https://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38',
-                attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                name: '🚗 Transport'
-            },
-            topo: {
-                url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-                attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-                name: '⛰️ Topographic'
-            }
-        };        let currentTileLayer;
-        let currentStyle = 'openstreetmap';function initializeMap() {
+        }
+        
+        function initializeMap() {
             try {
+                console.log('Initializing map...');
+                
                 // Default location (New York)
                 const defaultLat = 40.7128;
                 const defaultLng = -74.0060;
@@ -489,337 +267,101 @@
                 map = L.map('map', {
                     center: [defaultLat, defaultLng],
                     zoom: 13,
-                    zoomControl: false
+                    zoomControl: true
                 });
-
-                // Add custom zoom control in bottom right
-                L.control.zoom({
-                    position: 'bottomright'
-                }).addTo(map);                // Initialize with reliable OpenStreetMap
-                switchMapStyle('openstreetmap');
-
-                // Add map style switcher
-                addStyleSwitcher();
                 
-                // Show the map immediately after initialization
-                showMap();
+                // Add OpenStreetMap tiles
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 19
+                }).addTo(map);
                 
-                console.log('Modern map initialized with multiple styles');
+                // Hide loading indicator
+                loadingEl.style.display = 'none';
+                
+                console.log('Map initialized successfully');
+                
             } catch (error) {
                 console.error('Error initializing map:', error);
                 updateStatus('Error loading map. Please refresh the page.', 'error');
             }
-        }        function switchMapStyle(styleName) {
-            try {
-                const style = mapStyles[styleName];
-                
-                if (!style) {
-                    console.error('Map style not found:', styleName);
-                    // Fallback to OpenStreetMap
-                    styleName = 'openstreetmap';
-                    style = mapStyles['openstreetmap'];
-                }
-                
-                if (currentTileLayer) {
-                    map.removeLayer(currentTileLayer);
-                }
-
-                currentTileLayer = L.tileLayer(style.url, {
-                    attribution: style.attribution,
-                    maxZoom: 19,
-                    subdomains: 'abc',
-                    errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
-                    detectRetina: true
-                });
-
-                currentTileLayer.addTo(map);
-                currentStyle = styleName;
-
-                // Update active button
-                document.querySelectorAll('.style-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-                const activeBtn = document.querySelector(`[data-style="${styleName}"]`);
-                if (activeBtn) {
-                    activeBtn.classList.add('active');
-                }
-                
-                console.log('Switched to map style:', styleName);
-                
-                // Handle tile load errors
-                currentTileLayer.on('tileerror', function(error) {
-                    console.warn('Tile load error:', error);
-                    updateStatus('Some map tiles failed to load. Trying alternative source...', 'error');
-                });
-                
-                currentTileLayer.on('tileload', function() {
-                    updateStatus('🗺️ Map loaded successfully', 'active');
-                });
-                
-            } catch (error) {
-                console.error('Error switching map style:', error);
-                updateStatus('Error loading map style. Using fallback...', 'error');
-                
-                // Ultimate fallback - basic OSM
-                if (styleName !== 'openstreetmap') {
-                    switchMapStyle('openstreetmap');
-                }
-            }
-        }function addStyleSwitcher() {
-            const styleControl = L.control({position: 'topleft'});
-            
-            styleControl.onAdd = function(map) {
-                const div = L.DomUtil.create('div', 'style-control');                div.innerHTML = `
-                    <div class="style-switcher">
-                        ${Object.keys(mapStyles).map(key => 
-                            `<button class="style-btn ${key === 'openstreetmap' ? 'active' : ''}" data-style="${key}">
-                                ${mapStyles[key].name}
-                            </button>`
-                        ).join('')}
-                    </div>
-                `;
-                
-                // Add event listeners to buttons
-                div.querySelectorAll('.style-btn').forEach(btn => {
-                    btn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const style = this.getAttribute('data-style');
-                        switchMapStyle(style);
-                    });
-                });
-                
-                // Prevent map events on control
-                L.DomEvent.disableClickPropagation(div);
-                return div;
-            };
-            
-            styleControl.addTo(map);
         }
         
         function fetchInitialLocation() {
             fetch('/api/location')
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Initial location data:', data);
                     if (data.latitude && data.longitude) {
-                        console.log('Initial location loaded:', data);
-                        updateLocation(data);                    } else {
-                        console.log('No initial location available');
-                        updateStatus('🗺️ Map ready - waiting for location sharing...', 'waiting');
-                        showMap();
+                        updateLocation(data);
+                    } else {
+                        updateStatus('No location data available. Start sharing from another device.', 'waiting');
                     }
-                })                .catch(error => {
+                })
+                .catch(error => {
                     console.error('Error fetching initial location:', error);
-                    updateStatus('🗺️ Map ready - unable to load previous location', 'waiting');
-                    showMap();
+                    updateStatus('Error fetching location data', 'error');
                 });
         }
-          function updateLocation(locationData) {
+        
+        function updateLocation(locationData) {
             const { latitude, longitude, accuracy, timestamp } = locationData;
             
             if (!latitude || !longitude) {
-                console.log('Invalid location data received');
+                console.error('Invalid location data:', locationData);
                 return;
             }
-
-            const newLocation = { lat: latitude, lng: longitude };
             
-            // Show map if not already visible
-            showMap();
+            currentLocation = { lat: latitude, lng: longitude, accuracy };
             
-            // Update or create marker with smooth animation
+            // Update location marker
             if (locationMarker) {
-                // Smooth animation to new position using Leaflet's flyTo equivalent for markers
-                const currentLatLng = locationMarker.getLatLng();
-                const newLatLng = L.latLng(latitude, longitude);
-                
-                // Calculate distance to determine if we should animate
-                const distance = currentLatLng.distanceTo(newLatLng);
-                
-                if (distance > 1) { // Only animate if moved more than 1 meter
-                    // Smooth marker movement with custom animation
-                    animateMarkerToPosition(locationMarker, newLatLng, 800); // 800ms animation
-                } else {
-                    // Small movement, just update position
-                    locationMarker.setLatLng(newLatLng);
-                }
-                  // Update popup content
-                locationMarker.getPopup().setContent(`
-                    <div style="text-align: center; padding: 8px;">
-                        <div style="font-size: 16px; font-weight: bold; color: #667eea; margin-bottom: 8px;">
-                            📍 Live Location
-                        </div>
-                        <div style="font-size: 12px; color: #666; line-height: 1.4;">
-                            <strong>Coordinates:</strong><br>
-                            ${latitude.toFixed(6)}, ${longitude.toFixed(6)}<br>
-                            <strong>Accuracy:</strong> ${accuracy ? Math.round(accuracy) + 'm' : 'Unknown'}<br>
-                            <strong>Updated:</strong> ${new Date(timestamp).toLocaleTimeString()}
-                        </div>
-                    </div>
-                `);} else {
-                // Create new custom marker
-                const customIcon = L.divIcon({
-                    className: 'custom-location-marker',
-                    html: `
-                        <div class="marker-pulse"></div>
-                        <div class="marker-dot">
-                            <div class="marker-inner"></div>
-                        </div>
-                    `,
-                    iconSize: [30, 30],
-                    iconAnchor: [15, 15]
-                });
-
-                locationMarker = L.marker([latitude, longitude], {
-                    icon: customIcon,
-                    title: 'Live Location'
-                }).addTo(map);
-                
-                locationMarker.bindPopup(`
-                    <div style="text-align: center; padding: 8px;">
-                        <div style="font-size: 16px; font-weight: bold; color: #667eea; margin-bottom: 8px;">
-                            📍 Live Location
-                        </div>
-                        <div style="font-size: 12px; color: #666; line-height: 1.4;">
-                            <strong>Coordinates:</strong><br>
-                            ${latitude.toFixed(6)}, ${longitude.toFixed(6)}<br>
-                            <strong>Accuracy:</strong> ${accuracy ? Math.round(accuracy) + 'm' : 'Unknown'}<br>
-                            <strong>Updated:</strong> ${new Date(timestamp).toLocaleTimeString()}
-                        </div>
-                    </div>
-                `);
+                locationMarker.setLatLng([latitude, longitude]);
+            } else {
+                locationMarker = L.marker([latitude, longitude])
+                    .addTo(map)
+                    .bindPopup(`<b>Current Location</b><br>Lat: ${latitude.toFixed(6)}<br>Lng: ${longitude.toFixed(6)}<br>Accuracy: ${accuracy}m`);
             }
             
-            // Update or create accuracy circle with smooth transition
+            // Update accuracy circle
             if (accuracyCircle) {
                 accuracyCircle.setLatLng([latitude, longitude]);
                 accuracyCircle.setRadius(accuracy);
-            } else if (accuracy) {
+            } else {
                 accuracyCircle = L.circle([latitude, longitude], {
-                    radius: accuracy,
-                    color: '#667eea',
-                    fillColor: '#667eea',
-                    fillOpacity: 0.1,
-                    weight: 2
+                    color: 'blue',
+                    fillColor: '#3388ff',
+                    fillOpacity: 0.2,
+                    radius: accuracy
                 }).addTo(map);
             }
             
-            // Store current location
-            currentLocation = newLocation;
-            
-            // Smooth map follow if in follow mode
-            if (followMode) {
-                map.panTo([latitude, longitude], {
-                    animate: true,
-                    duration: 0.5, // 500ms smooth pan
-                    easeLinearity: 0.1
-                });
-            } else if (!map.hasLayer(locationMarker)) {
-                // First update - center map
-                map.setView([latitude, longitude], Math.max(map.getZoom(), 15));
-            }
-            
             // Update info panel
-            updateInfoPanel(locationData);
-            
-            // Update status
-            updateStatus('🟢 Live tracking active (updates every 2s)', 'active');
-        }
-        
-        // Custom function for smooth marker animation
-        function animateMarkerToPosition(marker, targetLatLng, duration = 1000) {
-            const startLatLng = marker.getLatLng();
-            const startTime = Date.now();
-            
-            function animate() {
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                
-                // Easing function for smooth animation (ease-out)
-                const easeProgress = 1 - Math.pow(1 - progress, 3);
-                
-                // Interpolate between start and target positions
-                const currentLat = startLatLng.lat + (targetLatLng.lat - startLatLng.lat) * easeProgress;
-                const currentLng = startLatLng.lng + (targetLatLng.lng - startLatLng.lng) * easeProgress;
-                
-                marker.setLatLng([currentLat, currentLng]);
-                  if (progress < 1) {
-                    requestAnimationFrame(animate);
-                }
-            }
-            
-            animate();
-        }
-        
-        function showMap() {
-            loadingEl.style.display = 'none';
-            mapEl.style.display = 'block';
-            infoPanelEl.style.display = 'block';
-            
-            // Invalidate size to ensure proper rendering
-            setTimeout(() => {
-                map.invalidateSize();
-            }, 100);
-        }
-        
-        function updateInfoPanel(locationData) {
-            const { latitude, longitude, accuracy, timestamp } = locationData;
-            
             currentLatEl.textContent = latitude.toFixed(6);
             currentLngEl.textContent = longitude.toFixed(6);
-            currentAccuracyEl.textContent = accuracy ? Math.round(accuracy) : 'Unknown';
+            currentAccuracyEl.textContent = accuracy;
+            lastUpdateEl.textContent = new Date(timestamp).toLocaleTimeString();
             
-            if (timestamp) {
-                const date = new Date(timestamp);
-                lastUpdateEl.textContent = date.toLocaleTimeString();
+            // Center map if in follow mode
+            if (followMode) {
+                map.setView([latitude, longitude], map.getZoom());
             }
+            
+            updateStatus('Location updated', 'active');
         }
-          function centerOnLocation() {
+        
+        function centerOnLocation() {
             if (currentLocation) {
-                // Add visual feedback
-                centerBtn.innerHTML = '📍 Centering...';
-                centerBtn.style.opacity = '0.7';
-                
-                // Smooth animation to location with optimal zoom
-                const targetZoom = Math.max(map.getZoom(), 16);
-                map.flyTo([currentLocation.lat, currentLocation.lng], targetZoom, {
-                    duration: 1.5, // Smooth 1.5 second animation
-                    easeLinearity: 0.25
-                });
-                
-                // Reset button after animation
-                setTimeout(() => {
-                    centerBtn.innerHTML = '📍 Recenter';
-                    centerBtn.style.opacity = '1';
-                }, 1500);
-                
-                // Briefly highlight the marker
-                if (locationMarker) {
-                    locationMarker.openPopup();
-                    setTimeout(() => {
-                        locationMarker.closePopup();
-                    }, 2000);
-                }
-            } else {
-                // No location available feedback
-                centerBtn.innerHTML = '❌ No Location';
-                setTimeout(() => {
-                    centerBtn.innerHTML = '📍 Recenter';
-                }, 1500);
+                map.setView([currentLocation.lat, currentLocation.lng], 16);
             }
         }
         
         function toggleFollowMode() {
             followMode = !followMode;
+            followBtn.classList.toggle('active', followMode);
             
-            if (followMode) {
-                followBtn.classList.add('active');
-                followBtn.innerHTML = '🎯 Following';
-                if (currentLocation) {
-                    centerOnLocation();
-                }
-            } else {
-                followBtn.classList.remove('active');
-                followBtn.innerHTML = '🎯 Follow Mode';
+            if (followMode && currentLocation) {
+                map.setView([currentLocation.lat, currentLocation.lng], map.getZoom());
             }
         }
         
@@ -827,37 +369,9 @@
             statusEl.textContent = message;
             statusEl.className = `status ${type}`;
         }
-          // Handle window resize
-        window.addEventListener('resize', () => {
-            if (map) {
-                map.invalidateSize();
-            }
-        });
         
-        // Add keyboard shortcuts
-        document.addEventListener('keydown', (event) => {
-            // Press 'C' or 'R' to recenter
-            if (event.key.toLowerCase() === 'c' || event.key.toLowerCase() === 'r') {
-                if (!event.ctrlKey && !event.altKey && !event.shiftKey) {
-                    event.preventDefault();
-                    centerOnLocation();
-                }
-            }
-            // Press 'F' to toggle follow mode
-            if (event.key.toLowerCase() === 'f') {
-                if (!event.ctrlKey && !event.altKey && !event.shiftKey) {
-                    event.preventDefault();
-                    toggleFollowMode();
-                }
-            }
-        });
-        
-        // Refresh location every 30 seconds as backup
-        setInterval(() => {
-            if (socket && socket.connected) {
-                fetchInitialLocation();
-            }
-        }, 30000);
+        // Start the application
+        initializeApp();
     </script>
 </body>
 </html>
