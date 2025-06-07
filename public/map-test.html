@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Test</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 20px; }
+        #map { height: 400px; width: 100%; border: 2px solid red; }
+        .debug { background: yellow; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="debug">
+        <h2>Map Test Page</h2>
+        <p>Status: <span id="status">Loading...</span></p>
+    </div>
+    
+    <div id="map"></div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        console.log('Script starting...');
+        document.getElementById('status').textContent = 'Script loaded';
+        
+        try {
+            console.log('Leaflet object:', L);
+            document.getElementById('status').textContent = 'Leaflet loaded';
+            
+            // Simple map initialization
+            const map = L.map('map').setView([40.7128, -74.0060], 13);
+            console.log('Map object created:', map);
+            document.getElementById('status').textContent = 'Map created';
+            
+            // Add basic OpenStreetMap tiles
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            console.log('Tiles added');
+            document.getElementById('status').textContent = 'Map initialized successfully!';
+            
+            // Add a marker
+            L.marker([40.7128, -74.0060]).addTo(map)
+                .bindPopup('Test marker')
+                .openPopup();
+                
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('status').textContent = 'Error: ' + error.message;
+        }
+    </script>
+</body>
+</html>
